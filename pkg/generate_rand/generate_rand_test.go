@@ -1,9 +1,9 @@
-package generateRand_test
+package generate_rand_test
 
 import (
 	"log"
 	"testing"
-	"to-do-list/app/pkg/generateRand"
+	"to-do-list/app/pkg/generate_rand"
 )
 
 const (
@@ -13,11 +13,11 @@ const (
 
 func TestGenerateNumbers(t *testing.T) {
 	for i := 0; i < 10; i++ {
-		log.Println(generateRand.GenerateNumbers(lengthUserId))
+		log.Println(generate_rand.GenerateNumbers(lengthUserId))
 	}
 }
 func TestGenerateStr(t *testing.T) {
 	for i := 0; i < 10; i++ {
-		log.Println(generateRand.GenerateStr(lengthSessId))
+		log.Println(generate_rand.GenerateStr(lengthSessId))
 	}
 }

@@ -1,4 +1,4 @@
-package sendLetter
+package send_letter
 
 import (
 	"errors"
@@ -21,15 +21,3 @@ func SendByEmail(emailRecipient string, tempCode uint, conf *configs.SendEmail) 
 	}
 	return nil
 }
-
-//e := email.NewEmail()
-//e.From = vr.Conf.EmailApi
-//e.To = []string{resVerify.Email}
-//e.Subject = "Verification message"
-//e.Text = []byte(resVerify.Hash)
-//e.HTML = []byte(fmt.Sprintf(`<a href="http://localhost:8081/verify/%s"> Кликните, чтобы подтвердить вход в аккаунт</a>`, resVerify.Hash))
-//errSend := e.Send(vr.Conf.AddressHost, smtp.PlainAuth("", vr.Conf.EmailApi, vr.Conf.Password, vr.Conf.Address))
-//if errSend != nil {
-//responsejs.RespJs(w, NewResponseSend(errSend), http.StatusInternalServerError)
-//return
-//}

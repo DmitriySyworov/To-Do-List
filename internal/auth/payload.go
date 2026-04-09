@@ -10,13 +10,13 @@ type RequestLoginAndRestore struct {
 	Password string `json:"password" validate:"required,min=8"`
 }
 type RequestConfirm struct {
-	TempCode uint `json:"temp_code" validate:"required"`
+	TempCode    uint   `json:"temp_code" validate:"required"`
+	NewPassword string `json:"new_password"`
 }
 type ResponseAuth struct {
-	Message   string `json:"message"`
-	SessionId string `json:"session_id"`
-	JWT       string `json:"jwt"`
-	Error     string `json:"error"`
+	Message string `json:"message"`
+	JWT     string `json:"jwt"`
+	Error   string `json:"error"`
 }
 type ResponseConfirm struct {
 	JWT   string `json:"jwt"`

@@ -1,4 +1,4 @@
-package handlerResponse
+package handler_response
 
 import (
 	"encoding/json"
