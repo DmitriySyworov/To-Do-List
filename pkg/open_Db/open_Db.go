@@ -1,4 +1,4 @@
-package openDb
+package open_Db
 
 import (
 	"to-do-list/app/configs"
@@ -26,7 +26,7 @@ func NewOpenPostgres(conf *configs.DbConf) *OpenPostgres {
 }
 func NewOpenRedis(conf *configs.DbConf) *OpenRedis {
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6380",
+		Addr:     "localhost:6379",
 		Password: conf.RedisPassword,
 		DB:       0,
 	})

@@ -2,14 +2,14 @@ package main
 
 import (
 	"to-do-list/app/configs"
-	"to-do-list/app/internal/models"
-	"to-do-list/app/pkg/openDb"
+	"to-do-list/app/internal/model"
+	"to-do-list/app/pkg/open_Db"
 )
 
 func main() {
 	conf := configs.NewConfigs()
-	db := openDb.NewOpenPostgres(conf.DbConf)
-	errMigrate := db.AutoMigrate(&models.Users{})
+	db := open_Db.NewOpenPostgres(conf.DbConf)
+	errMigrate := db.AutoMigrate(&model.User{}, &model.TaskForm{})
 	if errMigrate != nil {
 		panic(errMigrate)
 	}

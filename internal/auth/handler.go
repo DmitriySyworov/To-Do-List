@@ -2,9 +2,11 @@ package auth
 
 import (
 	"net/http"
-	"to-do-list/app/pkg/errorsCust"
-	"to-do-list/app/pkg/handlerRequest"
-	"to-do-list/app/pkg/handlerResponse"
+	"to-do-list/app/configs"
+	"to-do-list/app/pkg/errors_custom"
+	"to-do-list/app/pkg/handler_request"
+	"to-do-list/app/pkg/handler_response"
+	"to-do-list/app/pkg/middleware"
 )
 
 type HandlerAuth struct {
@@ -14,6 +16,7 @@ type HandlerAuth struct {
 }
 type HandlerAuthDep struct {
 	*ServiceAuth
+	*configs.Configs
 }
 
 func NewHandlerAuth(router *http.ServeMux, dep *HandlerAuthDep) {
@@ -23,16 +26,16 @@ func NewHandlerAuth(router *http.ServeMux, dep *HandlerAuthDep) {
 	router.HandleFunc("POST /auth/register", auth.Register())
 	router.HandleFunc("POST /auth/login", auth.Login())
 	router.HandleFunc("POST /auth/restore", auth.Restore())
-	router.Handle("POST /auth/confirm", auth.Confirm())
+	router.Handle("POST /auth/confirm", middleware.IsUserToken(auth.Confirm(), dep.Secret))
 
 }
 func (hl *HandlerAuth) Register() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		body, errBody := handlerRequest.ResultRequest[RequestRegister](request)
+		body, errBody := handler_request.ResultRequest[RequestRegister](request)
 		if errBody != nil {
 			if errBody != nil {
 				hl.ResponseAuth.Error = errBody.Error()
-				handlerResponse.HandlerResponse(writer, hl.ResponseAuth, http.StatusBadRequest)
+				handler_response.HandlerResponse(writer, hl.ResponseAuth, http.StatusBadRequest)
 				return
 			}
 		}
@@ -41,22 +44,22 @@ func (hl *HandlerAuth) Register() http.HandlerFunc {
 			hl.ResponseAuth.Error = errAuth.Error()
 			switch errAuth {
 			case ErrAlreadyExist:
-				handlerResponse.HandlerResponse(writer, hl.ResponseAuth, http.StatusUnauthorized)
+				handler_response.HandlerResponse(writer, hl.ResponseAuth, http.StatusUnauthorized)
 			default:
-				handlerResponse.HandlerResponse(writer, hl.ResponseAuth, http.StatusInternalServerError)
+				handler_response.HandlerResponse(writer, hl.ResponseAuth, http.StatusInternalServerError)
 			}
 			return
 		}
-		handlerResponse.HandlerResponse(writer, respAuth, http.StatusOK)
+		handler_response.HandlerResponse(writer, respAuth, http.StatusOK)
 	}
 }
 func (hl *HandlerAuth) Login() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		body, errBody := handlerRequest.ResultRequest[RequestLoginAndRestore](request)
+		body, errBody := handler_request.ResultRequest[RequestLoginAndRestore](request)
 		if errBody != nil {
 			if errBody != nil {
 				hl.ResponseAuth.Error = errBody.Error()
-				handlerResponse.HandlerResponse(writer, hl.ResponseAuth, http.StatusBadRequest)
+				handler_response.HandlerResponse(writer, hl.ResponseAuth, http.StatusBadRequest)
 				return
 			}
 		}
@@ -64,72 +67,82 @@ func (hl *HandlerAuth) Login() http.HandlerFunc {
 		if errAuth != nil {
 			hl.ResponseAuth.Error = errAuth.Error()
 			switch errAuth {
-			case errorsCust.ErrRecordNotFound, ErrIncorrectPassword:
-				handlerResponse.HandlerResponse(writer, hl.ResponseAuth, http.StatusUnauthorized)
+			case errors_custom.ErrRecordNotFound, errors_custom.ErrIncorrectPassword:
+				handler_response.HandlerResponse(writer, hl.ResponseAuth, http.StatusUnauthorized)
 			default:
-				handlerResponse.HandlerResponse(writer, hl.ResponseAuth, http.StatusInternalServerError)
+				handler_response.HandlerResponse(writer, hl.ResponseAuth, http.StatusInternalServerError)
 			}
 			return
 		}
-		handlerResponse.HandlerResponse(writer, respAuth, http.StatusOK)
+		handler_response.HandlerResponse(writer, respAuth, http.StatusOK)
 	}
 }
 func (hl *HandlerAuth) Restore() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		body, errBody := handlerRequest.ResultRequest[RequestLoginAndRestore](request)
+		body, errBody := handler_request.ResultRequest[RequestLoginAndRestore](request)
 		if errBody != nil {
 			hl.ResponseAuth.Error = errBody.Error()
-			handlerResponse.HandlerResponse(writer, hl.ResponseAuth, http.StatusBadRequest)
+			handler_response.HandlerResponse(writer, hl.ResponseAuth, http.StatusBadRequest)
 			return
 		}
-		respAuth, errAuth := hl.ServiceAuth.Restore(body)
-		if errAuth != nil {
-			hl.ResponseAuth.Error = errAuth.Error()
-			switch errAuth {
-			case errorsCust.ErrRecordNotFound:
-				handlerResponse.HandlerResponse(writer, hl.ResponseAuth, http.StatusUnauthorized)
-			default:
-				handlerResponse.HandlerResponse(writer, hl.ResponseAuth, http.StatusInternalServerError)
+		action := request.URL.Query().Get("action")
+		if action != "recoverLogin" && action != "recoverDelete" {
+			respAuth, errAuth := hl.ServiceAuth.Restore(body, action)
+			if errAuth != nil {
+				hl.ResponseAuth.Error = errAuth.Error()
+				switch errAuth {
+				case errors_custom.ErrRecordNotFound:
+					handler_response.HandlerResponse(writer, hl.ResponseAuth, http.StatusUnauthorized)
+				default:
+					handler_response.HandlerResponse(writer, hl.ResponseAuth, http.StatusInternalServerError)
+				}
+				return
 			}
-			return
+			handler_response.HandlerResponse(writer, respAuth, http.StatusOK)
 		}
-		handlerResponse.HandlerResponse(writer, respAuth, http.StatusOK)
 	}
 }
 func (hl *HandlerAuth) Confirm() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		body, errBody := handlerRequest.ResultRequest[RequestConfirm](request)
+		body, errBody := handler_request.ResultRequest[RequestConfirm](request)
 		if errBody != nil {
 			hl.ResponseConfirm.Error = errBody.Error()
-			handlerResponse.HandlerResponse(writer, hl.ResponseConfirm, http.StatusBadRequest)
+			handler_response.HandlerResponse(writer, hl.ResponseConfirm, http.StatusBadRequest)
 			return
 		}
-		//
-
-		//тут добавить авторизацию
-
-		//
+		hashId, okHashId := request.Context().Value(middleware.KeyCtxHashId).(uint)
+		sessionId, okSession := request.Context().Value(middleware.KeyCtxSessionId).(string)
+		if !okHashId || !okSession {
+			hl.ResponseConfirm.Error = errors_custom.ErrToken.Error()
+			handler_response.HandlerResponse(writer, hl.ResponseConfirm, http.StatusBadRequest)
+			return
+		}
 		action := request.URL.Query().Get("action")
-		if action != "restore" && action != "register" && action != "login" {
+		if action != "restore" && action != "register" && action != "login" && action != "recoverLogin" && action != "recoverDelete" {
 			hl.ResponseConfirm.Error = ErrIncorrectAction.Error()
-			handlerResponse.HandlerResponse(writer, hl.ResponseConfirm, http.StatusBadRequest)
+			handler_response.HandlerResponse(writer, hl.ResponseConfirm, http.StatusBadRequest)
 			return
 		}
-		respConfirm, errConfirm := hl.ServiceAuth.Confirm(0, body.TempCode, "", action)
+		if action == "recoverLogin" && body.NewPassword == "" {
+			hl.ResponseConfirm.Error = ErrNewPassword.Error()
+			handler_response.HandlerResponse(writer, hl.ResponseConfirm, http.StatusBadRequest)
+			return
+		}
+		respConfirm, errConfirm := hl.ServiceAuth.Confirm(body, hashId, sessionId, action)
 		if errConfirm != nil {
 			hl.ResponseConfirm.Error = errConfirm.Error()
 			switch errConfirm {
-			case errorsCust.ErrRecordNotFound, ErrValidSession, ErrIncorrectCode:
-				handlerResponse.HandlerResponse(writer, hl.ResponseConfirm, http.StatusUnauthorized)
+			case errors_custom.ErrRecordNotFound, ErrValidSession, ErrIncorrectCode:
+				handler_response.HandlerResponse(writer, hl.ResponseConfirm, http.StatusUnauthorized)
 			default:
-				handlerResponse.HandlerResponse(writer, hl.ResponseConfirm, http.StatusInternalServerError)
+				handler_response.HandlerResponse(writer, hl.ResponseConfirm, http.StatusInternalServerError)
 			}
 			return
 		}
 		if action == "register" {
-			handlerResponse.HandlerResponse(writer, respConfirm, http.StatusCreated)
+			handler_response.HandlerResponse(writer, respConfirm, http.StatusCreated)
 		} else {
-			handlerResponse.HandlerResponse(writer, respConfirm, http.StatusOK)
+			handler_response.HandlerResponse(writer, respConfirm, http.StatusOK)
 		}
 	}
 }

@@ -2,7 +2,7 @@ package jwt
 
 import (
 	"time"
-	"to-do-list/app/pkg/errorsCust"
+	"to-do-list/app/pkg/errors_custom"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -31,7 +31,7 @@ func (j *JWT) CreateTemporaryJWT(hashId float64, session string) (string, error)
 	})
 	token, errToken := claims.SignedString(j.Secret)
 	if errToken != nil {
-		return "", errorsCust.ErrWriteData
+		return "", errors_custom.ErrWriteData
 	}
 	return token, nil
 }
@@ -41,7 +41,7 @@ func (j *JWT) CreateJWT(userId float64) (string, error) {
 	})
 	token, errToken := claims.SignedString(j.Secret)
 	if errToken != nil {
-		return "", errorsCust.ErrWriteData
+		return "", errors_custom.ErrWriteData
 	}
 	return token, nil
 }
@@ -50,15 +50,15 @@ func (j *JWT) ParseTemporaryJWt(token string) (float64, string, error) {
 		return j.Secret, nil
 	})
 	if errParse != nil || !value.Valid {
-		return 0, "", errorsCust.ErrToken
+		return 0, "", errors_custom.ErrToken
 	}
 	hashId, ok := value.Claims.(jwt.MapClaims)[jHashId].(float64)
 	if !ok {
-		return 0, "", errorsCust.ErrToken
+		return 0, "", errors_custom.ErrToken
 	}
 	sessionId, ok := value.Claims.(jwt.MapClaims)[jSessionId].(string)
 	if !ok {
-		return 0, "", errorsCust.ErrToken
+		return 0, "", errors_custom.ErrToken
 	}
 	return hashId, sessionId, nil
 }
@@ -67,11 +67,11 @@ func (j *JWT) ParseJWt(token string) (float64, error) {
 		return j.Secret, nil
 	})
 	if errParse != nil || !value.Valid {
-		return 0, errorsCust.ErrToken
+		return 0, errors_custom.ErrToken
 	}
 	userId, ok := value.Claims.(jwt.MapClaims)[jUserId].(float64)
 	if !ok {
-		return 0, errorsCust.ErrToken
+		return 0, errors_custom.ErrToken
 	}
 	return userId, nil
 }

@@ -5,16 +5,16 @@ import (
 	"fmt"
 	"strconv"
 	"time"
-	"to-do-list/app/internal/models"
-	"to-do-list/app/pkg/openDb"
+	"to-do-list/app/internal/model"
+	"to-do-list/app/pkg/open_Db"
 )
 
 type RepositoryAuth struct {
-	*openDb.OpenRedis
+	*open_Db.OpenRedis
 	RedisCtx context.Context
 }
 
-func NewRepositoryAuth(redis *openDb.OpenRedis, redisCtx context.Context) *RepositoryAuth {
+func NewRepositoryAuth(redis *open_Db.OpenRedis, redisCtx context.Context) *RepositoryAuth {
 	return &RepositoryAuth{
 		OpenRedis: redis,
 		RedisCtx:  redisCtx,
@@ -31,10 +31,9 @@ const (
 	keyTempCode  = "temporary_code"
 )
 
-func (r *RepositoryAuth) CreateTempUser(tempUser *models.TempUser, idHash uint) error {
+func (r *RepositoryAuth) CreateTempUser(tempUser *model.TempUser, idHash uint) error {
 	key := fmt.Sprintf("user:%d", idHash)
 	errHSet := r.Client.HSet(r.RedisCtx, key, keyName, tempUser.Name, keyEmail, tempUser.Email, keyPassword, tempUser.Password, keyUserId, tempUser.UserId).Err()
-	defer r.Client.Close()
 	if errHSet != nil {
 		return errHSet
 	}
@@ -44,10 +43,9 @@ func (r *RepositoryAuth) CreateTempUser(tempUser *models.TempUser, idHash uint) 
 	}
 	return nil
 }
-func (r *RepositoryAuth) CreateSession(session *models.Session, idHash uint) error {
+func (r *RepositoryAuth) CreateSession(session *model.Session, idHash uint) error {
 	key := fmt.Sprintf("session:%d", idHash)
 	errHSet := r.Client.HSet(r.RedisCtx, key, keySessionId, session.SessionId, keyTempCode, session.TemporaryCode).Err()
-	defer r.Client.Close()
 	if errHSet != nil {
 		return errHSet
 	}
@@ -57,10 +55,9 @@ func (r *RepositoryAuth) CreateSession(session *models.Session, idHash uint) err
 	}
 	return nil
 }
-func (r *RepositoryAuth) GetTempUser(idHash uint) (*models.TempUser, error) {
+func (r *RepositoryAuth) GetTempUser(idHash uint) (*model.TempUser, error) {
 	key := fmt.Sprintf("user:%d", idHash)
 	mapValue, errHGetAll := r.Client.HGetAll(r.RedisCtx, key).Result()
-	defer r.Client.Close()
 	if errHGetAll != nil {
 		return nil, errHGetAll
 	}
@@ -68,17 +65,16 @@ func (r *RepositoryAuth) GetTempUser(idHash uint) (*models.TempUser, error) {
 	if errCode != nil {
 		return nil, errCode
 	}
-	return &models.TempUser{
-		Name: mapValue[keyName],
-		Email: mapValue[keyEmail],
+	return &model.TempUser{
+		Name:     mapValue[keyName],
+		Email:    mapValue[keyEmail],
 		Password: mapValue[keyPassword],
-		UserId: uint(userId),
+		UserId:   uint(userId),
 	}, nil
 }
-func (r *RepositoryAuth) GetSession(idHash uint) (*models.Session, error) {
+func (r *RepositoryAuth) GetSession(idHash uint) (*model.Session, error) {
 	key := fmt.Sprintf("session:%d", idHash)
 	mapValue, errHGetAll := r.Client.HGetAll(r.RedisCtx, key).Result()
-	defer r.Client.Close()
 	if errHGetAll != nil {
 		return nil, errHGetAll
 	}
@@ -86,7 +82,7 @@ func (r *RepositoryAuth) GetSession(idHash uint) (*models.Session, error) {
 	if errCode != nil {
 		return nil, errCode
 	}
-	return &models.Session{
+	return &model.Session{
 		SessionId:     mapValue[keySessionId],
 		TemporaryCode: uint(tempCode),
 	}, nil

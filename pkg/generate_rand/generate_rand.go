@@ -1,4 +1,4 @@
-package generateRand
+package generate_rand
 
 import (
 	"math/rand/v2"
