@@ -28,7 +28,7 @@ func NewOpenRedis(conf *configs.DbConf) *OpenRedis {
 	client := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: conf.RedisPassword,
-		DB:       1,
+		DB:       0,
 	})
 	return &OpenRedis{
 		Client: client,

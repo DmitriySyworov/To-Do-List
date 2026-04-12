@@ -6,6 +6,7 @@ import (
 	"to-do-list/app/internal/model"
 	"to-do-list/app/pkg/di"
 	"to-do-list/app/pkg/errors_custom"
+	"to-do-list/app/pkg/event_bus"
 	"to-do-list/app/pkg/generate_rand"
 )
 
@@ -15,6 +16,7 @@ type ServiceTask struct {
 }
 type ServiceTaskDep struct {
 	di.IUserRepo
+	*event_bus.EventBus
 }
 
 func NewServiceTask(repo *RepositoryTask, dep *ServiceTaskDep) *ServiceTask {
@@ -51,6 +53,10 @@ func (s *ServiceTask) CreateTask(body *RequestCreateTaskForm, userId uint) (*mod
 	if errCreate != nil {
 		return nil, ErrCreateTask
 	}
+	go s.EventBus.Publish(&event_bus.Event{
+		Name: event_bus.EventCreateTask,
+		Data: userId,
+	})
 	return taskForm, nil
 }
 func (s *ServiceTask) parseIdAndGetTask(taskIdStr string, userId uint) (*model.TaskForm, uint, error) {
@@ -87,6 +93,12 @@ func (s *ServiceTask) UpdateTask(body *RequestUpdateTaskForm, userId uint, taskI
 	if errUpdate != nil {
 		return nil, ErrUpdateTask
 	}
+	if body.StatusDone {
+		go s.EventBus.Publish(&event_bus.Event{
+			Name: event_bus.EventDoneTask,
+			Data: userId,
+		})
+	}
 	return newTaskForm, nil
 }
 func (s *ServiceTask) GetTask(taskIdStr string, userId uint) (*model.TaskForm, error) {
@@ -97,13 +109,24 @@ func (s *ServiceTask) GetTask(taskIdStr string, userId uint) (*model.TaskForm, e
 	return taskForm, nil
 }
 func (s *ServiceTask) DeleteTask(taskIdStr string, userId uint) error {
-	_, taskId, errParseAndGet := s.parseIdAndGetTask(taskIdStr, userId)
+	taskForm, taskId, errParseAndGet := s.parseIdAndGetTask(taskIdStr, userId)
 	if errParseAndGet != nil {
 		return errParseAndGet
 	}
 	errDel := s.RepositoryTask.DeleteTask(taskId, userId)
 	if errDel != nil {
 		return ErrDeleteTask
+	}
+	if taskForm.StatusDone {
+		go s.EventBus.Publish(&event_bus.Event{
+			Name: event_bus.EventDeleteDoneTask,
+			Data: userId,
+		})
+	} else {
+		go s.EventBus.Publish(&event_bus.Event{
+			Name: event_bus.EventDeleteActiveTask,
+			Data: userId,
+		})
 	}
 	return nil
 }
