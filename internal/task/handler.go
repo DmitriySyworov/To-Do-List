@@ -70,6 +70,11 @@ func (hl *HandlerTask) UpdateTask() http.HandlerFunc {
 			handler_response.HandlerResponse(writer, hl.TaskForm, http.StatusBadRequest)
 			return
 		}
+		if !body.StatusDone && body.Task == "" && body.Header == "" && body.Deadline == "" {
+			hl.TaskForm.Error = errors_custom.ErrIncorrectData.Error()
+			handler_response.HandlerResponse(writer, hl.TaskForm, http.StatusBadRequest)
+			return
+		}
 		taskIdStr := request.PathValue("id")
 		if len(taskIdStr) != lengthTaskId {
 			hl.TaskForm.Error = ErrIncorrectTaskId.Error()
@@ -88,7 +93,7 @@ func (hl *HandlerTask) UpdateTask() http.HandlerFunc {
 			switch errUpdate {
 			case ErrTaskNotFound:
 				handler_response.HandlerResponse(writer, hl.TaskForm, http.StatusNotFound)
-			case ErrIncorrectDeadline, ErrIncorrectTaskId:
+			case ErrIncorrectDeadline, ErrIncorrectTaskId, ErrDoneUpdate, ErrImpossibleParams:
 				handler_response.HandlerResponse(writer, hl.TaskForm, http.StatusBadRequest)
 			case ErrUpdateTask:
 				handler_response.HandlerResponse(writer, hl.TaskForm, http.StatusInternalServerError)
@@ -162,13 +167,9 @@ func (hl *HandlerTask) GetAllTasks() http.HandlerFunc {
 			handler_response.HandlerResponse(writer, hl.ResponseAllTasksPeriod, http.StatusUnauthorized)
 			return
 		}
-		period := request.URL.Query().Get("period")
-		if period != "day" && period != "month" && period != "year" {
-			hl.ResponseAllTasksPeriod.Error = ErrIncorrectPeriod.Error()
-			handler_response.HandlerResponse(writer, hl.ResponseAllTasksPeriod, http.StatusUnauthorized)
-			return
-		}
-		respAllTasks, errGetAll := hl.ServiceTask.GetAllTasks(userId, period)
+		from := request.URL.Query().Get("from")
+		to := request.URL.Query().Get("to")
+		respAllTasks, errGetAll := hl.ServiceTask.GetAllTasks(userId, from, to)
 		if errGetAll != nil {
 			hl.ResponseAllTasksPeriod.Error = errors_custom.ErrRecordNotFound.Error()
 			handler_response.HandlerResponse(writer, hl.ResponseAllTasksPeriod, http.StatusNotFound)

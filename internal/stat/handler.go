@@ -23,7 +23,7 @@ func NewHandlerStat(router *http.ServeMux, dep *HandlerStatDep) {
 		HandlerStatDep: dep,
 	}
 	router.Handle("/user/my-stat", middleware.IsAuthUserId(stat.GetMyStat(), dep.Secret))
-	router.Handle("/user/leaderboard", middleware.IsAuthUserId(stat.GetMyStat(), dep.Secret))
+	router.Handle("/user/leaderboard", middleware.IsAuthUserId(stat.GetLeaderboard(), dep.Secret))
 }
 
 func (hl *HandlerStat) GetMyStat() http.HandlerFunc {
@@ -40,7 +40,7 @@ func (hl *HandlerStat) GetMyStat() http.HandlerFunc {
 			handler_response.HandlerResponse(writer, hl.ResponseMyStat, http.StatusNotFound)
 			return
 		}
-		handler_response.HandlerResponse(writer, respStat, http.StatusUnauthorized)
+		handler_response.HandlerResponse(writer, respStat, http.StatusOK)
 	}
 }
 func (hl *HandlerStat) GetLeaderboard() http.HandlerFunc {

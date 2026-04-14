@@ -18,7 +18,7 @@ func main() {
 	conf := configs.NewConfigs()
 	//context
 	parentCtx := context.Background()
-	redisCtx, cancel := context.WithTimeout(parentCtx, time.Second*10)
+	redisCtx, cancel := context.WithTimeout(parentCtx, time.Minute*30)
 	defer cancel()
 	//EventBus
 	eventBus := event_bus.NewEventBus()
@@ -43,6 +43,7 @@ func main() {
 	user.NewHandlerUser(router, &user.HandlerUserDep{ServiceUser: serviceUsers, Configs: conf})
 	task.NewHandlerTask(router, &task.HandlerTaskDep{ServiceTask: serviceTask, Configs: conf})
 	stat.NewHandlerStat(router, &stat.HandlerStatDep{ServiceStat: serviceStat, Configs: conf})
+	//chain := middleware.Chain(middleware.CORS)
 	server := http.Server{
 		Addr:    ":8080",
 		Handler: router,

@@ -41,7 +41,7 @@ func (s *ServiceTask) CreateTask(body *RequestCreateTaskForm, userId uint) (*mod
 		}
 		deadline = date
 	}
-	taskForm := &model.TaskForm{
+	taskForm := model.TaskForm{
 		Header:     body.Header,
 		Task:       body.Task,
 		Deadline:   deadline,
@@ -49,7 +49,7 @@ func (s *ServiceTask) CreateTask(body *RequestCreateTaskForm, userId uint) (*mod
 		TaskId:     generate_rand.GenerateNumbers(lengthTaskId),
 		UserId:     userId,
 	}
-	errCreate := s.RepositoryTask.Create(taskForm)
+	errCreate := s.RepositoryTask.CreateTask(&taskForm)
 	if errCreate != nil {
 		return nil, ErrCreateTask
 	}
@@ -57,7 +57,7 @@ func (s *ServiceTask) CreateTask(body *RequestCreateTaskForm, userId uint) (*mod
 		Name: event_bus.EventCreateTask,
 		Data: userId,
 	})
-	return taskForm, nil
+	return &taskForm, nil
 }
 func (s *ServiceTask) parseIdAndGetTask(taskIdStr string, userId uint) (*model.TaskForm, uint, error) {
 	taskId, errParseId := strconv.Atoi(taskIdStr)
@@ -71,7 +71,7 @@ func (s *ServiceTask) parseIdAndGetTask(taskIdStr string, userId uint) (*model.T
 	return taskForm, uint(taskId), nil
 }
 func (s *ServiceTask) UpdateTask(body *RequestUpdateTaskForm, userId uint, taskIdStr string) (*model.TaskForm, error) {
-	_, taskId, errParseAndGet := s.parseIdAndGetTask(taskIdStr, userId)
+	taskForm, taskId, errParseAndGet := s.parseIdAndGetTask(taskIdStr, userId)
 	if errParseAndGet != nil {
 		return nil, errParseAndGet
 	}
@@ -83,13 +83,33 @@ func (s *ServiceTask) UpdateTask(body *RequestUpdateTaskForm, userId uint, taskI
 		}
 		deadline = date
 	}
-	newTaskForm := &model.TaskForm{
-		Header:     body.Header,
-		Task:       body.Task,
-		Deadline:   deadline,
-		StatusDone: body.StatusDone,
+	if taskForm.StatusDone {
+		return nil, ErrDoneUpdate
+	} else if body.Header != "" && body.Task == "" && body.Deadline == "" && !body.StatusDone {
+		taskForm.Header = body.Header
+	} else if body.Header == "" && body.Task != "" && body.Deadline == "" && !body.StatusDone {
+		taskForm.Task = body.Task
+	} else if body.Header == "" && body.Task == "" && body.Deadline != "" && !body.StatusDone {
+		taskForm.Deadline = deadline
+	} else if body.Header == "" && body.Task != "" && body.Deadline != "" && !body.StatusDone {
+		taskForm.Task = body.Task
+		taskForm.Deadline = deadline
+	} else if body.Header != "" && body.Task == "" && body.Deadline != "" && !body.StatusDone {
+		taskForm.Header = body.Header
+		taskForm.Deadline = deadline
+	} else if body.Header != "" && body.Task != "" && body.Deadline != "" && !body.StatusDone {
+		taskForm.Header = body.Header
+		taskForm.Task = body.Task
+		taskForm.Deadline = deadline
+	} else if body.Header != "" && body.Task != "" && body.Deadline == "" && !body.StatusDone {
+		taskForm.Header = body.Header
+		taskForm.Task = body.Task
+	} else if body.Header == "" && body.Task == "" && body.Deadline == "" && body.StatusDone {
+		taskForm.StatusDone = body.StatusDone
+	} else {
+		return nil, ErrImpossibleParams
 	}
-	errUpdate := s.RepositoryTask.UpdateTask(newTaskForm, taskId, userId)
+	errUpdate := s.RepositoryTask.UpdateTask(taskForm, taskId, userId)
 	if errUpdate != nil {
 		return nil, ErrUpdateTask
 	}
@@ -99,7 +119,7 @@ func (s *ServiceTask) UpdateTask(body *RequestUpdateTaskForm, userId uint, taskI
 			Data: userId,
 		})
 	}
-	return newTaskForm, nil
+	return taskForm, nil
 }
 func (s *ServiceTask) GetTask(taskIdStr string, userId uint) (*model.TaskForm, error) {
 	taskForm, _, errParseAndGet := s.parseIdAndGetTask(taskIdStr, userId)
@@ -130,25 +150,31 @@ func (s *ServiceTask) DeleteTask(taskIdStr string, userId uint) error {
 	}
 	return nil
 }
-func (s *ServiceTask) GetAllTasks(userId uint, period string) (*ResponseAllTasksPeriod, error) {
-	format := ""
-	if period == "year" {
-		format = "YYYY"
-	} else if period == "month" {
-		format = "YYYY-MM"
-	} else if period == "day" {
-		format = "YYYY-MM-DD"
+func (s *ServiceTask) GetAllTasks(userId uint, fromStr, toStr string) (*ResponseAllTasksPeriod, error) {
+	var from, to time.Time
+	if fromStr != "" {
+		date, errDate := time.Parse(time.DateOnly, fromStr)
+		if errDate != nil {
+			return nil, ErrIncorrectPeriod
+		}
+		from = date
 	}
-	AllTasks, errGet := s.RepositoryTask.GetAllTasks(userId, format)
-	if errGet != nil {
+	if toStr != "" {
+		date, errDate := time.Parse(time.DateOnly, toStr)
+		if errDate != nil {
+			return nil, ErrIncorrectPeriod
+		}
+		to = date
+	}
+	allTasks, errGetAll := s.RepositoryTask.GetAllTasks(userId, from, to)
+	if errGetAll != nil {
 		return nil, errors_custom.ErrRecordNotFound
 	}
-	sliceActiveTasks := make([]model.TaskForm, len(AllTasks))
-	sliceDoneTasks := make([]model.TaskForm, len(AllTasks))
-	for _, task := range AllTasks {
-		if task.StatusDone {
+	var sliceActiveTasks, sliceDoneTasks []model.TaskForm
+	for _, task := range allTasks {
+		if task.StatusDone && task.ID != 0 {
 			sliceDoneTasks = append(sliceDoneTasks, task)
-		} else {
+		} else if !task.StatusDone && task.ID != 0 {
 			sliceActiveTasks = append(sliceActiveTasks, task)
 		}
 	}
