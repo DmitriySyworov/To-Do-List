@@ -34,9 +34,9 @@ func (r *RepositoryStat) GetStatUser(userId uint) (*ResponseMyStat, error) {
 		return nil, errHGetAll
 	}
 	return &ResponseMyStat{
-		QuantityActiveTask: mapFields[fieldCreate],
-		QuantityDoneTask:   mapFields[fieldDone],
-		QuantityDeleteTask: mapFields[fieldDelete],
+		ActiveTask: mapFields[fieldCreate],
+		DoneTask:   mapFields[fieldDone],
+		DeleteTask: mapFields[fieldDelete],
 	}, nil
 }
 func (r *RepositoryStat) GetLeaderboard() ([]UserStat, error) {

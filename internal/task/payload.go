@@ -10,9 +10,9 @@ type RequestCreateTaskForm struct {
 	Deadline string `json:"deadline" validate:"omitempty,datetime=2006-01-02"`
 }
 type RequestUpdateTaskForm struct {
-	Header     string `json:"header" validate:"excluded_with=StatusDone"`
-	Task       string `json:"task" validate:"excluded_with=StatusDone"`
-	Deadline   string `json:"deadline" validate:"omitempty,datetime=2006-01-02,excluded_with=StatusDone"`
+	Header     string `json:"header"`
+	Task       string `json:"task"`
+	Deadline   string `json:"deadline" validate:"omitempty,datetime=2006-01-02"`
 	StatusDone bool   `json:"status_done"`
 }
 type ResponseAllTasksPeriod struct {

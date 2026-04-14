@@ -2,6 +2,7 @@ package stat
 
 import (
 	"log"
+	"sort"
 	"strconv"
 	"to-do-list/app/pkg/di"
 	"to-do-list/app/pkg/errors_custom"
@@ -36,15 +37,9 @@ func (s *ServiceStat) GetLeaderBoard(userId uint, limitStr string) (*ResponseLea
 	if errGetLeaderboard != nil || len(leaderboard) == 0 {
 		return nil, ErrLeaderboard
 	}
-	for i := range leaderboard {
-		for j := 0; j < len(leaderboard)-i-1; j++ {
-			if leaderboard[j].QuantityDoneTask < leaderboard[j+1].QuantityDoneTask {
-				temp := leaderboard[j].QuantityDoneTask
-				leaderboard[j].QuantityDoneTask = leaderboard[j+1].QuantityDoneTask
-				leaderboard[j].QuantityDoneTask = temp
-			}
-		}
-	}
+	sort.Slice(leaderboard, func(i, j int) bool {
+		return leaderboard[i].QuantityDoneTask > leaderboard[j].QuantityDoneTask
+	})
 	var place uint = 0
 	var resLeaderboard []UserStat
 	for i := 0; i < len(leaderboard); i++ {
