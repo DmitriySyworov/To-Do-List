@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"to-do-list/app/pkg/open_Db"
 )
@@ -39,7 +40,7 @@ func (r *RepositoryStat) GetStatUser(userId uint) (*ResponseMyStat, error) {
 		DeleteTask: mapFields[fieldDelete],
 	}, nil
 }
-func (r *RepositoryStat) GetLeaderboard() ([]UserStat, error) {
+func (r *RepositoryStat) GetLeaderboard(limit int) ([]UserStat, error) {
 	AllKeys, errKey := r.Client.Keys(r.RedisCtx, "*").Result()
 	if errKey != nil {
 		return nil, errKey
@@ -52,17 +53,26 @@ func (r *RepositoryStat) GetLeaderboard() ([]UserStat, error) {
 			if errHGetAll != nil {
 				log.Println(errHGetAll)
 			}
-			tempLeaderboard.QuantityDoneTask = mapFields[fieldDone]
+			tempLeaderboard.DoneTask = mapFields[fieldDone]
 			tempLeaderboard.Name = mapFields[fieldName]
 			leaderboard = append(leaderboard, tempLeaderboard)
 		}
+	}
+	sort.Slice(leaderboard, func(i, j int) bool {
+		return leaderboard[i].DoneTask > leaderboard[j].DoneTask
+	})
+	if len(leaderboard) > limit {
+		return leaderboard[:limit], nil
 	}
 	return leaderboard, nil
 }
 func (r *RepositoryStat) AddCreateTask(userId uint, name string) error {
 	key := fmt.Sprintf("task:%d", userId)
-	errKey := r.Client.Keys(r.RedisCtx, key).Err()
+	keys, errKey := r.Client.Keys(r.RedisCtx, key).Result()
 	if errKey != nil {
+		return errKey
+	}
+	if len(keys) == 0 {
 		errHSet := r.Client.HSet(r.RedisCtx, key, fieldCreate, 1, fieldDelete, 0, fieldDone, 0, fieldName, name).Err()
 		if errHSet != nil {
 			return errHSet

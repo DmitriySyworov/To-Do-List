@@ -7,11 +7,11 @@ type ResponseMyStat struct {
 	Error      string `json:"error"`
 }
 type ResponseLeaderboard struct {
-	User  []UserStat `json:"user"`
+	User  []UserStat `json:"users"`
 	Error string     `json:"error"`
 }
 type UserStat struct {
-	Name             string `json:"name"`
-	QuantityDoneTask string `json:"quantity_done_task"`
-	Place            uint   `json:"place"`
+	Name     string `json:"name"`
+	DoneTask string `json:"done_task"`
+	Place    uint   `json:"place"`
 }
