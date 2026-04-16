@@ -52,6 +52,11 @@ func (hl *HandlerStat) GetLeaderboard() http.HandlerFunc {
 			return
 		}
 		limit := request.URL.Query().Get("limit")
+		if limit == "" || limit == "0" {
+			hl.ResponseLeaderboard.Error = ErrLimit.Error()
+			handler_response.HandlerResponse(writer, hl.ResponseLeaderboard, http.StatusBadRequest)
+			return
+		}
 		respLeaderboard, errResp := hl.ServiceStat.GetLeaderBoard(userId, limit)
 		if errResp != nil {
 			hl.ResponseLeaderboard.Error = respLeaderboard.Error

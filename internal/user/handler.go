@@ -64,7 +64,7 @@ func (hl *HandlerUser) UpdateUser() http.HandlerFunc {
 			switch errUpdate {
 			case errors_custom.ErrRecordNotFound:
 				handler_response.HandlerResponse(writer, hl.User, http.StatusNotFound)
-			case errors_custom.ErrIncorrectPassword:
+			case errors_custom.ErrIncorrectPassword, ErrParamsUpdateUser:
 				handler_response.HandlerResponse(writer, hl.User, http.StatusBadRequest)
 			default:
 				handler_response.HandlerResponse(writer, hl.User, http.StatusInternalServerError)

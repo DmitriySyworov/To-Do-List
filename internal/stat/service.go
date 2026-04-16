@@ -2,7 +2,6 @@ package stat
 
 import (
 	"log"
-	"sort"
 	"strconv"
 	"to-do-list/app/pkg/di"
 	"to-do-list/app/pkg/errors_custom"
@@ -33,13 +32,10 @@ func (s *ServiceStat) GetLeaderBoard(userId uint, limitStr string) (*ResponseLea
 	if errGetUser != nil {
 		return nil, errors_custom.ErrNoExistUser
 	}
-	leaderboard, errGetLeaderboard := s.RepositoryStat.GetLeaderboard()
+	leaderboard, errGetLeaderboard := s.RepositoryStat.GetLeaderboard(limit)
 	if errGetLeaderboard != nil || len(leaderboard) == 0 {
 		return nil, ErrLeaderboard
 	}
-	sort.Slice(leaderboard, func(i, j int) bool {
-		return leaderboard[i].QuantityDoneTask > leaderboard[j].QuantityDoneTask
-	})
 	var place uint = 0
 	var resLeaderboard []UserStat
 	for i := 0; i < len(leaderboard); i++ {
@@ -52,19 +48,22 @@ func (s *ServiceStat) GetLeaderBoard(userId uint, limitStr string) (*ResponseLea
 			}, nil
 		}
 	}
-	return nil, ErrLeaderboard
+	return &ResponseLeaderboard{
+		User: resLeaderboard,
+	}, nil
 }
 func (s *ServiceStat) AddTaskInStat() {
 	for {
 		for event := range s.EventBus.Subscribe() {
-			userId, ok := event.Data.(uint)
+			userId, okId := event.Data.(uint)
+			if !okId {
+				log.Println("eventbus data incorrect")
+			}
 			user, errGetUser := s.IUserRepo.GetUserById(userId)
 			if errGetUser != nil {
 				log.Println(errGetUser)
 			}
-			if !ok {
-				log.Println("eventbus data incorrect")
-			}
+
 			if event.Name == event_bus.EventCreateTask {
 				errAddCreate := s.RepositoryStat.AddCreateTask(userId, user.Name)
 				if errAddCreate != nil {

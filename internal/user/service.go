@@ -23,20 +23,31 @@ func (s *ServiceUser) UpdateUser(body *RequestUpdateUser, userId uint) (*model.U
 		return nil, errors_custom.ErrRecordNotFound
 	}
 	hashedNewPassword := ""
-	if body.NewPassword != "" {
+	if body.Email != "" || body.NewPassword != "" {
 		errPassword := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(body.OriginalPassword))
 		if errPassword != nil {
 			return nil, errors_custom.ErrIncorrectPassword
 		}
+	}
+	if body.NewPassword != "" {
 		newPass, errHashPass := bcrypt.GenerateFromPassword([]byte(body.NewPassword), bcrypt.DefaultCost)
 		if errHashPass != nil {
 			return nil, errors_custom.ErrSecurityData
 		}
 		hashedNewPassword = string(newPass)
 	}
-	user.Name = body.Name
-	user.Email = body.Email
-	user.Password = hashedNewPassword
+	if body.Name != "" && body.OriginalPassword == "" && body.NewPassword == "" && body.Email == "" {
+		user.Name = body.Name
+	} else if body.Name == "" && body.OriginalPassword != "" && body.NewPassword != "" && body.Email == "" {
+		user.Password = body.NewPassword
+	} else if body.Name == "" && body.OriginalPassword != "" && body.NewPassword == "" && body.Email != "" {
+		user.Error = body.Email
+	} else if body.Name == "" && body.OriginalPassword != "" && body.NewPassword != "" && body.Email != "" {
+		user.Email = body.Email
+		user.Password = hashedNewPassword
+	} else {
+		return nil, ErrParamsUpdateUser
+	}
 	resUser, errUpdate := s.RepositoryUsers.UpdateUser(user)
 	if errUpdate != nil {
 		return nil, ErrUpdateUser

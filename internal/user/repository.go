@@ -3,8 +3,6 @@ package user
 import (
 	"to-do-list/app/internal/model"
 	"to-do-list/app/pkg/open_Db"
-
-	"gorm.io/gorm/clause"
 )
 
 type RepositoryUsers struct {
@@ -33,7 +31,7 @@ func (r *RepositoryUsers) GetUserById(userId uint) (*model.User, error) {
 }
 
 func (r *RepositoryUsers) UpdateUser(user *model.User) (*model.User, error) {
-	res := r.DB.Clauses(clause.Clause{}).Where("user_id = ?", user.UserId).Updates(&user)
+	res := r.DB.Where("user_id = ?", user.UserId).Updates(&user)
 	if res.Error != nil {
 		return nil, res.Error
 	}
@@ -47,7 +45,7 @@ func (r *RepositoryUsers) CreateUser(user *model.User) error {
 	return nil
 }
 func (r *RepositoryUsers) RestoreDeleteUser(userId uint) error {
-	res := r.DB.Unscoped().Where("user_id = ?", userId).Update("deleted_at", nil)
+	res := r.DB.Model(&model.User{}).Where("user_id = ?", userId).Update("deleted_at", nil)
 	if res.Error != nil {
 		return res.Error
 	}
