@@ -87,19 +87,22 @@ func (hl *HandlerAuth) Restore() http.HandlerFunc {
 		}
 		action := request.URL.Query().Get("action")
 		if action != "recoverLogin" && action != "recoverDelete" {
-			respAuth, errAuth := hl.ServiceAuth.Restore(body, action)
-			if errAuth != nil {
-				hl.ResponseAuth.Error = errAuth.Error()
-				switch errAuth {
-				case errors_custom.ErrRecordNotFound:
-					handler_response.HandlerResponse(writer, hl.ResponseAuth, http.StatusUnauthorized)
-				default:
-					handler_response.HandlerResponse(writer, hl.ResponseAuth, http.StatusInternalServerError)
-				}
-				return
-			}
-			handler_response.HandlerResponse(writer, respAuth, http.StatusOK)
+			hl.ResponseAuth.Error = ErrIncorrectAction.Error()
+			handler_response.HandlerResponse(writer, hl.ResponseAuth, http.StatusBadRequest)
+			return
 		}
+		respAuth, errAuth := hl.ServiceAuth.Restore(body, action)
+		if errAuth != nil {
+			hl.ResponseAuth.Error = errAuth.Error()
+			switch errAuth {
+			case errors_custom.ErrRecordNotFound:
+				handler_response.HandlerResponse(writer, hl.ResponseAuth, http.StatusUnauthorized)
+			default:
+				handler_response.HandlerResponse(writer, hl.ResponseAuth, http.StatusInternalServerError)
+			}
+			return
+		}
+		handler_response.HandlerResponse(writer, respAuth, http.StatusOK)
 	}
 }
 func (hl *HandlerAuth) Confirm() http.HandlerFunc {

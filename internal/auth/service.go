@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"log"
 	"to-do-list/app/configs"
 	"to-do-list/app/internal/model"
 	"to-do-list/app/pkg/di"
@@ -66,6 +67,8 @@ func (s *ServiceAuth) Login(body *RequestLoginAndRestore) (*ResponseAuth, error)
 	if errGet != nil {
 		return nil, errors_custom.ErrRecordNotFound
 	}
+	log.Println(user.Password, body.Password)
+
 	errCompare := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(body.Password))
 	if errCompare != nil {
 		return nil, errors_custom.ErrIncorrectPassword

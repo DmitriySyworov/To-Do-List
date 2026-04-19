@@ -1,35 +1,40 @@
 package main
 
 import (
-	"context"
 	"net/http"
-	"time"
 	"to-do-list/app/configs"
 	"to-do-list/app/internal/auth"
 	"to-do-list/app/internal/stat"
 	"to-do-list/app/internal/task"
 	"to-do-list/app/internal/user"
 	"to-do-list/app/pkg/event_bus"
+	"to-do-list/app/pkg/middleware"
 	"to-do-list/app/pkg/open_Db"
 )
 
 func main() {
+	server := http.Server{
+		Addr:    ":8080",
+		Handler: App(),
+	}
+	errApi := server.ListenAndServe()
+	if errApi != nil {
+		panic(errApi)
+	}
+}
+func App() http.Handler {
 	//conf
 	conf := configs.NewConfigs()
-	//context
-	parentCtx := context.Background()
-	redisCtx, cancel := context.WithTimeout(parentCtx, time.Minute*30)
-	defer cancel()
 	//EventBus
 	eventBus := event_bus.NewEventBus()
 	//open_Db
-	postgresDb := open_Db.NewOpenPostgres(conf.DbConf)
-	redisDb := open_Db.NewOpenRedis(conf.DbConf)
+	postgresDb := open_Db.NewOpenPostgres(conf.DSN)
+	redisDb := open_Db.NewOpenRedis(conf.RedisPassword)
 	//Repository
-	repoAuth := auth.NewRepositoryAuth(redisDb, redisCtx)
+	repoAuth := auth.NewRepositoryAuth(redisDb)
 	repoUser := user.NewRepositoryUsers(postgresDb)
 	repoTask := task.NewRepositoryTask(postgresDb)
-	repoStat := stat.NewRepositoryStat(redisDb, redisCtx)
+	repoStat := stat.NewRepositoryStat(redisDb)
 	//Service
 	serviceAuth := auth.NewServiceAuth(repoAuth, &auth.ServiceAuthDep{IUserRepo: repoUser, Configs: conf})
 	serviceUsers := user.NewServiceUsers(repoUser)
@@ -43,13 +48,11 @@ func main() {
 	user.NewHandlerUser(router, &user.HandlerUserDep{ServiceUser: serviceUsers, Configs: conf})
 	task.NewHandlerTask(router, &task.HandlerTaskDep{ServiceTask: serviceTask, Configs: conf})
 	stat.NewHandlerStat(router, &stat.HandlerStatDep{ServiceStat: serviceStat, Configs: conf})
-	//chain := middleware.Chain(middleware.CORS)
-	server := http.Server{
-		Addr:    ":8080",
-		Handler: router,
-	}
-	errApi := server.ListenAndServe()
-	if errApi != nil {
-		panic(errApi)
-	}
+	//chain
+	stack := middleware.Chain(
+		middleware.CORS,
+		middleware.Logging,
+		middleware.RecoveryPanic,
+	)
+	return stack(router)
 }

@@ -6,18 +6,17 @@ import (
 	"log"
 	"sort"
 	"strings"
+	"time"
 	"to-do-list/app/pkg/open_Db"
 )
 
 type RepositoryStat struct {
 	*open_Db.OpenRedis
-	RedisCtx context.Context
 }
 
-func NewRepositoryStat(redis *open_Db.OpenRedis, redisCtx context.Context) *RepositoryStat {
+func NewRepositoryStat(redis *open_Db.OpenRedis) *RepositoryStat {
 	return &RepositoryStat{
 		OpenRedis: redis,
-		RedisCtx:  redisCtx,
 	}
 }
 
@@ -26,11 +25,15 @@ const (
 	fieldDone   = "Done_task"
 	fieldDelete = "Delete_Task"
 	fieldName   = "Name"
+
+	timeout = 30
 )
 
 func (r *RepositoryStat) GetStatUser(userId uint) (*ResponseMyStat, error) {
 	key := fmt.Sprintf("task:%d", userId)
-	mapFields, errHGetAll := r.Client.HGetAll(r.RedisCtx, key).Result()
+	redisCtx, cancel := context.WithTimeout(context.Background(), time.Second*timeout)
+	defer cancel()
+	mapFields, errHGetAll := r.Client.HGetAll(redisCtx, key).Result()
 	if errHGetAll != nil {
 		return nil, errHGetAll
 	}
@@ -41,15 +44,20 @@ func (r *RepositoryStat) GetStatUser(userId uint) (*ResponseMyStat, error) {
 	}, nil
 }
 func (r *RepositoryStat) GetLeaderboard(limit int) ([]UserStat, error) {
-	AllKeys, errKey := r.Client.Keys(r.RedisCtx, "*").Result()
+	redisCtx, cancel := context.WithTimeout(context.Background(), time.Second*timeout)
+	defer cancel()
+	AllKeys, errKey := r.Client.Keys(redisCtx, "*").Result()
 	if errKey != nil {
-		return nil, errKey
+		return nil, ErrLeaderboard
+	}
+	if len(AllKeys) == 0 {
+		return nil, ErrLeaderboardEmpty
 	}
 	var leaderboard []UserStat
 	for _, key := range AllKeys {
 		var tempLeaderboard UserStat
 		if strings.Contains(key, "task:") {
-			mapFields, errHGetAll := r.Client.HGetAll(r.RedisCtx, key).Result()
+			mapFields, errHGetAll := r.Client.HGetAll(redisCtx, key).Result()
 			if errHGetAll != nil {
 				log.Println(errHGetAll)
 			}
@@ -68,17 +76,19 @@ func (r *RepositoryStat) GetLeaderboard(limit int) ([]UserStat, error) {
 }
 func (r *RepositoryStat) AddCreateTask(userId uint, name string) error {
 	key := fmt.Sprintf("task:%d", userId)
-	keys, errKey := r.Client.Keys(r.RedisCtx, key).Result()
+	redisCtx, cancel := context.WithTimeout(context.Background(), time.Second*timeout)
+	defer cancel()
+	keys, errKey := r.Client.Keys(redisCtx, key).Result()
 	if errKey != nil {
 		return errKey
 	}
 	if len(keys) == 0 {
-		errHSet := r.Client.HSet(r.RedisCtx, key, fieldCreate, 1, fieldDelete, 0, fieldDone, 0, fieldName, name).Err()
+		errHSet := r.Client.HSet(redisCtx, key, fieldCreate, 1, fieldDelete, 0, fieldDone, 0, fieldName, name).Err()
 		if errHSet != nil {
 			return errHSet
 		}
 	} else {
-		errIncr := r.Client.HIncrBy(r.RedisCtx, key, fieldCreate, 1).Err()
+		errIncr := r.Client.HIncrBy(redisCtx, key, fieldCreate, 1).Err()
 		if errIncr != nil {
 			return errIncr
 		}
@@ -86,24 +96,28 @@ func (r *RepositoryStat) AddCreateTask(userId uint, name string) error {
 	return nil
 }
 func (r *RepositoryStat) AddDoneTask(userId uint) error {
+	redisCtx, cancel := context.WithTimeout(context.Background(), time.Second*timeout)
+	defer cancel()
 	key := fmt.Sprintf("task:%d", userId)
-	errIncr := r.Client.HIncrBy(r.RedisCtx, key, fieldDone, 1).Err()
+	errIncr := r.Client.HIncrBy(redisCtx, key, fieldDone, 1).Err()
 	if errIncr != nil {
 		return errIncr
 	}
-	errDecr := r.Client.HIncrBy(r.RedisCtx, key, fieldCreate, -1).Err()
+	errDecr := r.Client.HIncrBy(redisCtx, key, fieldCreate, -1).Err()
 	if errDecr != nil {
 		return errDecr
 	}
 	return nil
 }
 func (r *RepositoryStat) AddDeleteTask(userId uint, choiceField string) error {
+	redisCtx, cancel := context.WithTimeout(context.Background(), time.Second*timeout)
+	defer cancel()
 	key := fmt.Sprintf("task:%d", userId)
-	errIncr := r.Client.HIncrBy(r.RedisCtx, key, fieldDelete, 1).Err()
+	errIncr := r.Client.HIncrBy(redisCtx, key, fieldDelete, 1).Err()
 	if errIncr != nil {
 		return errIncr
 	}
-	errDecr := r.Client.HIncrBy(r.RedisCtx, key, choiceField, -1).Err()
+	errDecr := r.Client.HIncrBy(redisCtx, key, choiceField, -1).Err()
 	if errDecr != nil {
 		return errDecr
 	}

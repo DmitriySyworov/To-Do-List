@@ -1,8 +1,6 @@
 package open_Db
 
 import (
-	"to-do-list/app/configs"
-
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -15,8 +13,8 @@ type OpenRedis struct {
 	*redis.Client
 }
 
-func NewOpenPostgres(conf *configs.DbConf) *OpenPostgres {
-	db, errOpen := gorm.Open(postgres.Open(conf.DSN))
+func NewOpenPostgres(DSN string) *OpenPostgres {
+	db, errOpen := gorm.Open(postgres.Open(DSN))
 	if errOpen != nil {
 		panic(errOpen)
 	}
@@ -24,10 +22,10 @@ func NewOpenPostgres(conf *configs.DbConf) *OpenPostgres {
 		DB: db,
 	}
 }
-func NewOpenRedis(conf *configs.DbConf) *OpenRedis {
+func NewOpenRedis(redisPass string) *OpenRedis {
 	client := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
-		Password: conf.RedisPassword,
+		Password: redisPass,
 		DB:       0,
 	})
 	return &OpenRedis{

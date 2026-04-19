@@ -23,6 +23,17 @@ func NewServiceStat(repo *RepositoryStat, dep *ServiceStatDep) *ServiceStat {
 		ServiceStatDep: dep,
 	}
 }
+func (s *ServiceStat) GetMyStat(userId uint) (*ResponseMyStat, error) {
+	_, errGetUser := s.IUserRepo.GetUserById(userId)
+	if errGetUser != nil {
+		return nil, errors_custom.ErrNoExistUser
+	}
+	stat, errGetStat := s.RepositoryStat.GetStatUser(userId)
+	if errGetStat != nil || stat.DeleteTask == "" && stat.DoneTask == "" && stat.ActiveTask == "" {
+		return nil, ErrNotFoundStat
+	}
+	return stat, nil
+}
 func (s *ServiceStat) GetLeaderBoard(userId uint, limitStr string) (*ResponseLeaderboard, error) {
 	limit, errLimit := strconv.Atoi(limitStr)
 	if errLimit != nil {
@@ -33,8 +44,8 @@ func (s *ServiceStat) GetLeaderBoard(userId uint, limitStr string) (*ResponseLea
 		return nil, errors_custom.ErrNoExistUser
 	}
 	leaderboard, errGetLeaderboard := s.RepositoryStat.GetLeaderboard(limit)
-	if errGetLeaderboard != nil || len(leaderboard) == 0 {
-		return nil, ErrLeaderboard
+	if errGetLeaderboard != nil {
+		return nil, errGetLeaderboard
 	}
 	var place uint = 0
 	var resLeaderboard []UserStat
