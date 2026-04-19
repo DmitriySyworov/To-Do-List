@@ -34,10 +34,15 @@ func (hl *HandlerStat) GetMyStat() http.HandlerFunc {
 			handler_response.HandlerResponse(writer, hl.ResponseMyStat, http.StatusUnauthorized)
 			return
 		}
-		respStat, errGetStat := hl.RepositoryStat.GetStatUser(userId)
+		respStat, errGetStat := hl.ServiceStat.GetMyStat(userId)
 		if errGetStat != nil {
 			hl.ResponseMyStat.Error = ErrNotFoundStat.Error()
-			handler_response.HandlerResponse(writer, hl.ResponseMyStat, http.StatusNotFound)
+			switch errGetStat {
+			case ErrNotFoundStat:
+				handler_response.HandlerResponse(writer, hl.ResponseMyStat, http.StatusNotFound)
+			case errors_custom.ErrNoExistUser:
+				handler_response.HandlerResponse(writer, hl.ResponseMyStat, http.StatusUnauthorized)
+			}
 			return
 		}
 		handler_response.HandlerResponse(writer, respStat, http.StatusOK)
@@ -59,12 +64,14 @@ func (hl *HandlerStat) GetLeaderboard() http.HandlerFunc {
 		}
 		respLeaderboard, errResp := hl.ServiceStat.GetLeaderBoard(userId, limit)
 		if errResp != nil {
-			hl.ResponseLeaderboard.Error = respLeaderboard.Error
+			hl.ResponseLeaderboard.Error = errResp.Error()
 			switch errResp {
 			case ErrLimit:
 				handler_response.HandlerResponse(writer, hl.ResponseLeaderboard, http.StatusBadRequest)
 			case errors_custom.ErrNoExistUser:
 				handler_response.HandlerResponse(writer, hl.ResponseLeaderboard, http.StatusUnauthorized)
+			case ErrLeaderboardEmpty:
+				handler_response.HandlerResponse(writer, hl.ResponseLeaderboard, http.StatusNotFound)
 			case ErrLeaderboard:
 				handler_response.HandlerResponse(writer, hl.ResponseLeaderboard, http.StatusInternalServerError)
 			}

@@ -11,13 +11,11 @@ import (
 
 type RepositoryAuth struct {
 	*open_Db.OpenRedis
-	RedisCtx context.Context
 }
 
-func NewRepositoryAuth(redis *open_Db.OpenRedis, redisCtx context.Context) *RepositoryAuth {
+func NewRepositoryAuth(redis *open_Db.OpenRedis) *RepositoryAuth {
 	return &RepositoryAuth{
 		OpenRedis: redis,
-		RedisCtx:  redisCtx,
 	}
 }
 
@@ -29,15 +27,19 @@ const (
 
 	keySessionId = "session_id"
 	keyTempCode  = "temporary_code"
+
+	timeout = 30
 )
 
 func (r *RepositoryAuth) CreateTempUser(tempUser *model.TempUser, idHash uint) error {
 	key := fmt.Sprintf("user:%d", idHash)
-	errHSet := r.Client.HSet(r.RedisCtx, key, keyName, tempUser.Name, keyEmail, tempUser.Email, keyPassword, tempUser.Password, keyUserId, tempUser.UserId).Err()
+	redisCtx, cancel := context.WithTimeout(context.Background(), time.Second*timeout)
+	defer cancel()
+	errHSet := r.Client.HSet(redisCtx, key, keyName, tempUser.Name, keyEmail, tempUser.Email, keyPassword, tempUser.Password, keyUserId, tempUser.UserId).Err()
 	if errHSet != nil {
 		return errHSet
 	}
-	errExpire := r.Client.Expire(r.RedisCtx, key, time.Minute*5).Err()
+	errExpire := r.Client.Expire(redisCtx, key, time.Minute*5).Err()
 	if errExpire != nil {
 		return errExpire
 	}
@@ -45,11 +47,13 @@ func (r *RepositoryAuth) CreateTempUser(tempUser *model.TempUser, idHash uint) e
 }
 func (r *RepositoryAuth) CreateSession(session *model.Session, idHash uint) error {
 	key := fmt.Sprintf("session:%d", idHash)
-	errHSet := r.Client.HSet(r.RedisCtx, key, keySessionId, session.SessionId, keyTempCode, session.TemporaryCode).Err()
+	redisCtx, cancel := context.WithTimeout(context.Background(), time.Second*timeout)
+	defer cancel()
+	errHSet := r.Client.HSet(redisCtx, key, keySessionId, session.SessionId, keyTempCode, session.TemporaryCode).Err()
 	if errHSet != nil {
 		return errHSet
 	}
-	errExpire := r.Client.Expire(r.RedisCtx, key, time.Minute*5).Err()
+	errExpire := r.Client.Expire(redisCtx, key, time.Minute*5).Err()
 	if errExpire != nil {
 		return errExpire
 	}
@@ -57,7 +61,9 @@ func (r *RepositoryAuth) CreateSession(session *model.Session, idHash uint) erro
 }
 func (r *RepositoryAuth) GetTempUser(idHash uint) (*model.TempUser, error) {
 	key := fmt.Sprintf("user:%d", idHash)
-	mapValue, errHGetAll := r.Client.HGetAll(r.RedisCtx, key).Result()
+	redisCtx, cancel := context.WithTimeout(context.Background(), time.Second*timeout)
+	defer cancel()
+	mapValue, errHGetAll := r.Client.HGetAll(redisCtx, key).Result()
 	if errHGetAll != nil {
 		return nil, errHGetAll
 	}
@@ -73,8 +79,10 @@ func (r *RepositoryAuth) GetTempUser(idHash uint) (*model.TempUser, error) {
 	}, nil
 }
 func (r *RepositoryAuth) GetSession(idHash uint) (*model.Session, error) {
+	redisCtx, cancel := context.WithTimeout(context.Background(), time.Second*timeout)
+	defer cancel()
 	key := fmt.Sprintf("session:%d", idHash)
-	mapValue, errHGetAll := r.Client.HGetAll(r.RedisCtx, key).Result()
+	mapValue, errHGetAll := r.Client.HGetAll(redisCtx, key).Result()
 	if errHGetAll != nil {
 		return nil, errHGetAll
 	}
