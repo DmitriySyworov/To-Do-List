@@ -12,7 +12,7 @@ const (
 
 func TestCreateJWT(t *testing.T) {
 	j := NewJWT(Secret)
-	token, errToken := j.CreateJWT(test.UserTestID)
+	token, errToken := j.CreateJWT(test.UserIDTest)
 	if errToken != nil {
 		t.Fatal(errToken)
 	}

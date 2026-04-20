@@ -3,7 +3,6 @@ package stat
 import (
 	"context"
 	"fmt"
-	"log"
 	"sort"
 	"strings"
 	"time"
@@ -59,7 +58,7 @@ func (r *RepositoryStat) GetLeaderboard(limit int) ([]UserStat, error) {
 		if strings.Contains(key, "task:") {
 			mapFields, errHGetAll := r.Client.HGetAll(redisCtx, key).Result()
 			if errHGetAll != nil {
-				log.Println(errHGetAll)
+				return nil, errHGetAll
 			}
 			tempLeaderboard.DoneTask = mapFields[fieldDone]
 			tempLeaderboard.Name = mapFields[fieldName]
