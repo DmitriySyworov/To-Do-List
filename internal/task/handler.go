@@ -1,7 +1,6 @@
 package task
 
 import (
-	"fmt"
 	"net/http"
 	"to-do-list/app/configs"
 	"to-do-list/app/internal/model"
@@ -144,7 +143,6 @@ func (hl *HandlerTask) DeleteTask() http.HandlerFunc {
 			return
 		}
 		errDel := hl.ServiceTask.DeleteTask(taskIdStr, userId)
-		fmt.Println(errDel)
 		if errDel != nil {
 			switch errDel {
 			case ErrTaskNotFound:

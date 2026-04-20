@@ -29,7 +29,7 @@ func App() http.Handler {
 	eventBus := event_bus.NewEventBus()
 	//open_Db
 	postgresDb := open_Db.NewOpenPostgres(conf.DSN)
-	redisDb := open_Db.NewOpenRedis(conf.RedisPassword)
+	redisDb := open_Db.NewOpenRedis(conf.RedisPassword, conf.RedisHost)
 	//Repository
 	repoAuth := auth.NewRepositoryAuth(redisDb)
 	repoUser := user.NewRepositoryUsers(postgresDb)

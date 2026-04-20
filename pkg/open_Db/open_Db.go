@@ -22,9 +22,9 @@ func NewOpenPostgres(DSN string) *OpenPostgres {
 		DB: db,
 	}
 }
-func NewOpenRedis(redisPass string) *OpenRedis {
+func NewOpenRedis(redisPass, redisPort string) *OpenRedis {
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     redisPort,
 		Password: redisPass,
 		DB:       0,
 	})
